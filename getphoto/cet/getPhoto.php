@@ -6,7 +6,7 @@ ini_set ('memory_limit', '128M');
 $order = mysql_query("
     SELECT p.XH, c.card 
     FROM card_user c, photo_info p 
-    WHERE myOK = 'NG' AND c.XH = p.XH
+    WHERE cetOK = 'NG' AND c.XH = p.XH
     ORDER BY p.XH ");
 
 //main
@@ -16,54 +16,32 @@ while ($row = mysql_fetch_array($order)) {
     //echo $XH . " " . $card . "\n";
     $len = strlen($card);
     if ($len < 6) continue;
-    $passwd = substr($card, $len - 6);
-    
-    //$XH = '2013286190138';
-    //$passwd = '21001X';
-    $cookie_can = 0;
+    //$XH = '2011302580311';
+    //$card = '230803199206150810';
+    echo $XH . ".......\n";
     do {
-        echo $XH . ".......\n";
-        //echo $passwd . "\n";
-        if ($cookie_can === 0) {
-            $output = send_post($XH, $passwd);
-            if (strlen($output) == 0) {
-                echo "------------> LOST! \n";
-                continue;
-            }
+        $url = "http://202.114.74.136/pic/{$card}{$XH}.jpg";
+        $photo = get($url, 0);
+        if (strlen($photo) == 0) {
+            echo "------------> LOST! \n";
+            continue;
         }
-        if ($cookie_can === 1 || deal_output($output) === 1) {
-            echo "------------> OK! \n";
-            $url = "http://my.whu.edu.cn/attachmentDownload.portal?notUseCache=true&type=userPhoto&ownerId={$XH}";
-            //echo $url . "\n";
-            $cookie =  dirname(__FILE__) . '\cookie.txt';
-            $photo = get($url, $cookie, 0);
-            //echo strlen($photo) . "\n"; 
-            //echo $photo . "\n";
-            if (strlen($photo) === 6324) {
-                $can_cookie = 0;
-                echo "------------> cookie-error! \n";
-                continue; 
-            }
-            if (strlen($photo) === 5230) {
-                saveMarkMy($XH, 'NO-PHOTO');
-                echo "------------> NO-PHOTO! \n";
-            }
-            else {
-                file_put_contents(dirname(__FILE__) . '\\photo\\' . $XH . '_my.jpg', $photo);
-                saveMarkMy($XH, 'OK');
-            }
+        else if (strlen($photo) === 1163) {
+            echo "------------> NO! \n";
+            saveMarkCet($XH, 'NO');
         }
         else {
-             saveMarkMy($XH, 'NO');
-             echo "------------> NO! \n";
-        }
-    }while(strlen($output) == 0);
+            file_put_contents(dirname(__FILE__) . '\\photo\\' . $XH . '_cet.jpg', $photo);
+            echo "------------> OK! \n";
+            saveMarkCet($XH, 'OK');
+        }    
+    }while (strlen($photo) == 0);
     //break;
 }
 
-function saveMarkMy($XH, $mark) {
+function saveMarkCet($XH, $mark) {
     if ( !mysql_query("UPDATE photo_info 
-                        SET myOK = '{$mark}'
+                        SET cetOK = '{$mark}'
 						WHERE XH = {$XH}") ) {
 			echo "Can't save mark!\n";
 	}
@@ -81,11 +59,11 @@ function deal_output($output) {
 	else return -1;
 }
 
-function get($url, $request_cookie, $type){
+function get($url, $type){
         $ch=curl_init($url);
         curl_setopt($ch,CURLOPT_HEADER,$type==1?true:false);
         curl_setopt($ch,CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch,CURLOPT_COOKIEFILE,$request_cookie);
+        //curl_setopt($ch,CURLOPT_COOKIEFILE,$request_cookie);
         //curl_setopt($ch,CURLOPT_USERAGENT,'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.83 Safari/537.1');
         curl_setopt($ch,CURLOPT_CONNECTTIMEOUT,10);
         //echo $request_cookie . " " . $type . "\n";

@@ -6,7 +6,7 @@ ini_set ('memory_limit', '128M');
 $order = mysql_query("
     SELECT p.XH, c.card 
     FROM card_user c, photo_info p 
-    WHERE cetOK = 'NG' AND c.XH = p.XH
+    WHERE cetOK <> 'OK' AND c.XH = p.XH
     ORDER BY p.XH ");
 
 //main
@@ -18,8 +18,8 @@ while ($row = mysql_fetch_array($order)) {
     if ($len < 6) continue;
     //$XH = '2011302580311';
     //$card = '230803199206150810';
-    echo $XH . ".......\n";
     do {
+        echo $XH . ".......\n";
         $url = "http://202.114.74.136/pic/{$card}{$XH}.jpg";
         $photo = get($url, 0);
         if (strlen($photo) == 0) {

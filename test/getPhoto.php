@@ -20,10 +20,11 @@ while ($row = mysql_fetch_array($order)) {
     
     //$XH = '2013286190138';
     //$passwd = '21001X';
-    $cookie_can = 0;
+    $cookie_can = 1;
     do {
-        echo $XH . ".......\n";
+        echo $XH . "_MY.......\n";
         //echo $passwd . "\n";
+        $output = "";
         if ($cookie_can === 0) {
             $output = send_post($XH, $passwd);
             if (strlen($output) == 0) {
@@ -33,31 +34,42 @@ while ($row = mysql_fetch_array($order)) {
         }
         if ($cookie_can === 1 || deal_output($output) === 1) {
             echo "------------> OK! \n";
+            if ($cookie_can === 1) {
+                echo "------------> Use cookie! \n";
+            } 
             $url = "http://my.whu.edu.cn/attachmentDownload.portal?notUseCache=true&type=userPhoto&ownerId={$XH}";
             //echo $url . "\n";
             $cookie =  dirname(__FILE__) . '\cookie.txt';
             $photo = get($url, $cookie, 0);
             //echo strlen($photo) . "\n"; 
             //echo $photo . "\n";
-            if (strlen($photo) === 6324) {
-                $can_cookie = 0;
+            if (strlen($photo) == 0) {
+                echo "------------> PHOTO-LOST! \n";
+                continue;
+            }
+            else if (strpos($photo, "captchaContent") != false) {
+                $cookie_can = 0;
                 echo "------------> cookie-error! \n";
+                $output = "";
                 continue; 
             }
-            if (strlen($photo) === 5230) {
+            else if (strpos($photo, "clearFix") != false) {
                 saveMarkMy($XH, 'NO-PHOTO');
                 echo "------------> NO-PHOTO! \n";
             }
             else {
                 file_put_contents(dirname(__FILE__) . '\\photo\\' . $XH . '_my.jpg', $photo);
+
+                echo "------------> GET! \n";
                 saveMarkMy($XH, 'OK');
+                $cookie_can = 1;
             }
         }
         else {
              saveMarkMy($XH, 'NO');
              echo "------------> NO! \n";
         }
-    }while(strlen($output) == 0);
+    }while($cookie_can != 1 && strlen($output) == 0);
     //break;
 }
 

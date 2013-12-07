@@ -18,12 +18,12 @@ while ($row = mysql_fetch_array($order)) {
     if ($len < 6) continue;
     $passwd = substr($card, $len - 6);
     
-    //$XH = '2013286190138';
-    //$passwd = '21001X';
+    //$XH = '2011302580361';
+    //$passwd = '25129X';
     $cookie_can = 1;
     do {
         echo $XH . "_MY.......\n";
-        //echo $passwd . "\n";
+        echo $passwd . "\n";
         $output = "";
         if ($cookie_can === 0) {
             $output = send_post($XH, $passwd);
@@ -54,6 +54,11 @@ while ($row = mysql_fetch_array($order)) {
                 continue; 
             }
             else if (strpos($photo, "clearFix") != false) {
+                if ($cookie_can === 1) {
+                    $cookie_can = 0;
+                    //echo $output;
+                    continue;
+                }
                 saveMarkMy($XH, 'NO-PHOTO');
                 echo "------------> NO-PHOTO! \n";
             }

@@ -10,8 +10,8 @@ class FacePPClientDemo
 	{
 		$this->api_server_url = "http://api.cn.faceplusplus.com/v2/";
     	$this->auth_params = array();
-   		$this->auth_params['api_key'] = $api_key;
-   		$this->auth_params['api_secret'] = $api_secret;
+   		$this->auth_params['api_key'] = urlencode($api_key);
+   		$this->auth_params['api_secret'] = urlencode($api_secret);
 	}
 	
 	//////////////////////////////////////////////////////////
@@ -71,10 +71,13 @@ class FacePPClientDemo
         
     }
     
-    public function face_detect_post($filename)
-    {
+    public function face_detect_post($filename) {
+      //  $filename = "";
+        //$filename = urlencode($filename);
+        //echo $filename;
+        //$filename = urlencode($filename);
         return $this->post_call("detection/detect", array(
-                                  "img" => '@'.$filename
+                                  "img" => '@' . $filename
                                   ));
     }
 	
@@ -82,8 +85,7 @@ class FacePPClientDemo
 	// private mathods
 	//////////////////////////////////////////////////////////
 	
-    protected function call($method, $params = array())
-    {
+    protected function call($method, $params = array()) {
     	$params = array_merge($this->auth_params, $params);
 		$url = $this->api_server_url . "$method?".http_build_query($params);
 		
@@ -112,33 +114,34 @@ class FacePPClientDemo
 
     }
     
-    protected function post_call($method, $params = array())
-    {
+    protected function post_call($method, $params = array()) {
     	$params = array_merge($this->auth_params, $params);
-		$url = $this->api_server_url . "$method";
-        
-		if (DEBUG_MODE)
-		{
-			echo "REQUEST: $url?" .http_build_query($params)."\n";
+        $url = $this->api_server_url . "$method";
+        //$url = urlencode($url);
+		if (DEBUG_MODE) {
+			echo "REQUEST: " . http_build_query($params)."\n";
 		}
-        
+        file_put_contents("test.txt", http_build_query($params));
     	$ch = curl_init();
     	curl_setopt($ch, CURLOPT_URL, $url);
     	curl_setopt($ch, CURLOPT_POST, 1);
-    	curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
-    	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15 );
      	$data = curl_exec($ch);
-    	curl_close($ch);
-        
+        print_r(curl_getinfo($ch, CURLINFO_HTTP_CODE));
+        echo "\n";
+        curl_close($ch);
 		$result = null;
-		if (!empty($data))
-		{
-			if (DEBUG_MODE)
-			{
+		if (!empty($data)) {
+			if (DEBUG_MODE) {
 				echo "RETURN: " . $data . "\n";
 			}
 			$result = json_decode($data);
 		}
+        else {
+            echo "data is empyt!\n";
+        }
 		
 		return $result;
     }

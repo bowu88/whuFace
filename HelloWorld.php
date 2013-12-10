@@ -5,75 +5,91 @@ include("config.php");
 
 // your api_key and api_secret
 $api_key = "8efd663edcabaf4d0b58c6453f0da7fc";
-$api_secret = "CWHKKnalNIReEJdPIshC2iGBEDMDQg3P ";
+$api_secret = "CWHKKnalNIReEJdPIshC2iGBEDMDQg3P";
 // initialize client object
+// 
+$order = mysql_query("
+    SELECT c.XH, c.card, p.myOK, p.cetOK
+    FROM card_user c, photo_info p 
+    WHERE (myOK = 'OK' OR cetOK = 'OK') AND c.XH = p.XH and p.XH LIKE '2011302580%'
+    ORDER BY p.XH ");
+
 $api = new FacePPClientDemo($api_key, $api_secret);
 
 // the list of person_name to train and identify for
-$person_names = array("1", "2", "3");
+$n = 0;
+$myOK = array();
+$cetOK = array();
+$person_names = array();
+$person_card = array();
+while ($row = mysql_fetch_array($order)) {
+    $person_names[$n++] = $row['XH'];
+    $myOK[$row['XH']] = $row['myOK'];
+    $cetOK[$row['XH']] = $row['cetOK'];
+    $person_card[$row['XH']] = $row['card'];
+}
+//echo $n . "\n";
+
 // store the face_ids obtained by detection/detect API
 $face_ids = array();
-// register new people, detect faces
+ //register new people, detect faces
 foreach ($person_names as $person_name)
     detect($api, $person_name, $face_ids);
     
-// the name of group for testing
 $group = "sample_group";
-// generate a new group, add people into group
 create_group($api, $group, $person_names);
-
-// generate training model for group
 train($api, $group);
     
-// finally, identify people in the group
-identify($api, $person_names[0], $group);
+//identify($api, $person_names[0], $group);
 
 /* 
  *	create new person, detect faces from person's image_url
  */
-function detect(&$api, $person_name, &$face_ids) 
-{
-	// obtain photo_url to train
-    $url = getTrainingUrl($person_name);
-    
-    // detect faces in this photo
+
+function addFace(&$api, $person_name, &$face_ids, $url) {
     $result = $api->face_detect($url);
-    // skip errors
-    if (empty($result->face))
-        return false;
-    // skip photo with multiple faces (we are not sure which face to train)
-   	if (count($result->face) > 1)
-   		return false;
-   	
-   	// obtain the face_id
-   	$face_id = $result->face[0]->face_id;
-   	$face_ids[] = $face_id;
-    // delete the person if exists
+    if (empty($result->face)) return false;
+    if (count($result->face) > 1) return false;
+    $face_id = $result->face[0]->face_id;
+    $face_ids[] = $face_id;
+    $api->person_add_face($face_id, $person_name);
+}
+
+function detect(&$api, $person_name, &$face_ids) {
+    global $myOK, $cetOK;
+    // obtain photo_url to train
+    //$filePath = getTrainingFile($person_name);
+    //$fileContent = fread(fopen($filePath, "r"), filesize($filePath));
+    //echo $fileCotent;
+    //detect faces in this photo
+    //$result = $api->face_detect_post($fileContent);
     $api->person_delete($person_name);
-   	// create a new person for this face
-   	$api->person_create($person_name);
-   	// add face into new person
-   	$api->person_add_face($face_id, $person_name);
+    $api->person_create($person_name);
+    //echo "231231128=========" . $myOK[$person_name] . "\n";
+    if ($myOK[$person_name] == 'OK') {
+        $url = getTrainingUrlMy($person_name);
+        addFace($api, $person_name, $face_ids, $url); 
+    }
+    if ($cetOK[$person_name] == 'OK') {
+        $url = getTrainingUrlCet($person_name);
+        addFace($api, $person_name, $face_ids, $url); 
+    }
 }
 
 /*
  *	train identification model for group
  */
-function train(&$api, $group_name)
-{
+function train(&$api, $group_name) {
    	// train model
    	$session = $api->train_identify($group_name);
-    if (empty($session->session_id))
-    {
+    if (empty($session->session_id)) {
         // something went wrong, skip
         return false;
     }
     $session_id = $session->session_id;
     // wait until training process done
-    while ($session=$api->info_get_session($session_id)) 
-    {
+    while ($session=$api->info_get_session($session_id)) {
         sleep(1);
-
         if (!empty($session->status)) {
             if ($session->status != "INQUEUE")
                 break;
@@ -95,15 +111,12 @@ function identify(&$api, $person_name, $group_name)
 	$result = $api->recognition_identify($url, $group_name);
 	
 	// skip errors
-	if (empty($result->face))
-		return false;
+	if (empty($result->face)) return false;
 	// skip photo with multiple faces
-	if (count($result->face) > 1)
-		return false;
+	if (count($result->face) > 1) return false;
 	$face = $result->face[0];
 	// skip if no person returned
-	if (count($face->candidate) < 1)
-		return false;
+	if (count($face->candidate) < 1) return false;
 		
 	// print result
 	foreach ($face->candidate as $candidate) 
@@ -111,16 +124,12 @@ function identify(&$api, $person_name, $group_name)
         "confidence $candidate->confidence\n";
 }
 
-/*
+/*/
  *	generate a new group with group_name, add all people into group
  */
-function create_group(&$api, $group_name, $person_names) 
-{
-	// delete the group if exists
+function create_group(&$api, $group_name, $person_names) {
 	$api->group_delete($group_name);
-	// create new group
 	$api->group_create($group_name);
-   	// add new person into the group
 	foreach ($person_names as $person_name)
 	   	$api->group_add_person($person_name, $group_name);
 }
@@ -128,19 +137,32 @@ function create_group(&$api, $group_name, $person_names)
 /*
  *	return the train data(image_url) of $person_name
  */
-function getTrainingUrl($person_name)
-{
+function getTrainingFile($person_name) {
     // TODO: here is just the fake url
-	return "http://cn.faceplusplus.com/wp-content/themes/faceplusplus.zh/assets/img/demo/".$person_name.".jpg";
+	//return "http://cn.faceplusplus.com/wp-content/themes/faceplusplus.zh/assets/img/demo/".$person_name.".jpg";
+    return 'E:\\www\\whuFace\\photo\\my\\' . $person_name . '_my.jpg';
 }
+
+function getTrainingUrlMy($person_name) {
+    global $person_card;
+    //return "http://202.114.74.136/pic/{$person_card[$person_name]}{$person_name}.jpg"; //cte
+    return "http://acm.whu.edu.cn/xioumu/gg/{$person_name}_my.jpg";
+}
+function getTrainingUrlCet($person_name) {
+    global $person_card;
+    return "http://202.114.74.136/pic/{$person_card[$person_name]}{$person_name}.jpg"; //cte
+    //return "http://acm.whu.edu.cn/xioumu/gg/{$person_name}_my.jpg";
+}
+
 
 /*
  *	return the photo_url of $person_name to identify for
  */
-function getPhotoUrl($person_name)
-{
+function getPhotoFile($person_name) {
     // TODO: here is just the fake url
-	return "http://cn.faceplusplus.com/wp-content/themes/faceplusplus.zh/assets/img/demo/".$person_name.".jpg";
+    return 'E:\\www\\whuFace\\photo\\my\\' . $person_name . '_my.jpg';
 }
+
+
 
 ?>

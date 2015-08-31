@@ -16,8 +16,7 @@ while ($row = mysql_fetch_array($order)) {
     //echo $XH . " " . $card . "\n";
     $len = strlen($card);
     if ($len < 6) continue;
-    //$XH = '2011302580311';
-    //$card = '230803199206150810';
+   
     do {
         echo $XH . ".......\n";
         $url = "http://202.114.74.136/pic/{$card}{$XH}.jpg";

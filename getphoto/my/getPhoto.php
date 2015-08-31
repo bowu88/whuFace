@@ -18,8 +18,7 @@ while ($row = mysql_fetch_array($order)) {
     if ($len < 6) continue;
     $passwd = substr($card, $len - 6);
     
-    //$XH = '2011302580361';
-    //$passwd = '25129X';
+    
     $cookie_can = 1;
     do {
         echo $XH . "_MY.......\n";
